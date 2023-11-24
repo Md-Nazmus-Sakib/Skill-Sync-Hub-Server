@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 require('dotenv').config();
 const port = process.env.PORT || 5000;
@@ -32,7 +32,11 @@ async function run() {
 
         const userCollection = client.db("SkillSyncHub").collection("users");
         const teacherCollection = client.db("SkillSyncHub").collection("teachers");
-
+        // users related api
+        app.get('/users', async (req, res) => {
+            const result = await userCollection.find().toArray();
+            res.send(result);
+        });
         app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
@@ -43,6 +47,23 @@ async function run() {
             const result = await userCollection.insertOne(user);
             res.send(result);
         });
+        app.patch('/users/admin/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    role: 'Admin'
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+        //teacher api
+        app.get('/teacher', async (req, res) => {
+            const result = await teacherCollection.find().toArray();
+            res.send(result);
+        });
+
         app.post('/teacher', async (req, res) => {
             const teacher = req.body;
             const query = { teacherEmail: teacher.teacherEmail }
