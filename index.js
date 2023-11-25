@@ -58,6 +58,17 @@ async function run() {
             const result = await userCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
+        app.patch('/users/role/:email', async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const updatedDoc = {
+                $set: {
+                    role: 'Teacher'
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
         //teacher api
         app.get('/teacher', async (req, res) => {
             const result = await teacherCollection.find().toArray();
@@ -75,6 +86,29 @@ async function run() {
             res.send(result);
         });
 
+        app.patch('/teacher/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    status: 'Accepted'
+                }
+            }
+            const result = await teacherCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+
+        app.patch('/teacher/reject/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    status: 'Rejected'
+                }
+            }
+            const result = await teacherCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
