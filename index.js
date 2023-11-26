@@ -29,14 +29,38 @@ async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
-
+        //all Collection
         const userCollection = client.db("SkillSyncHub").collection("users");
         const teacherCollection = client.db("SkillSyncHub").collection("teachers");
+        const classCollection = client.db("SkillSyncHub").collection("classes");
         // users related api
         app.get('/users', async (req, res) => {
             const result = await userCollection.find().toArray();
             res.send(result);
         });
+        app.get('/users/:email', async (req, res) => {
+
+            const email = req.params.email;
+            // console.log(email)
+            const query = { email: email }
+            const result = await userCollection.findOne(query);
+            res.send(result);
+        });
+
+        app.get('/users/role/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const projection = { role: 1 };
+            // console.log(projection)
+
+            const user = await userCollection.findOne(query, projection);
+            if (user && user.role) {
+                res.send({ role: user.role }); // Send only the role in the response
+            } else {
+                res.send([]);
+            }
+
+        })
         app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
@@ -109,6 +133,47 @@ async function run() {
             const result = await teacherCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
+        // class related api 
+
+        app.get('/class/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { teacherEmail: email }
+            // console.log()
+            const result = await classCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        app.post('/class', async (req, res) => {
+            const addClass = req.body;
+            const result = await classCollection.insertOne(addClass);
+            res.send(result);
+        });
+
+        app.put('/class/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const updateCourse = req.body;
+            const course = {
+                $set: {
+                    title: updateCourse.title,
+                    coursePhoto: updateCourse.coursePhoto,
+                    price: updateCourse.price,
+                    details: updateCourse.details,
+                }
+            }
+            const result = await classCollection.updateOne(filter, course, options);
+            res.send(result)
+
+        })
+
+        app.delete('/class/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await classCollection.deleteOne(query)
+            res.send(result)
+        })
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
