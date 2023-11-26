@@ -36,7 +36,7 @@ async function run() {
         const assignmentCollection = client.db("SkillSyncHub").collection("assignments");
         // users related api
         app.get('/users', async (req, res) => {
-            const result = await userCollection.find().toArray();
+            const result = await userCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
         app.get('/users/:email', async (req, res) => {
@@ -96,7 +96,7 @@ async function run() {
         })
         //teacher api
         app.get('/teacher', async (req, res) => {
-            const result = await teacherCollection.find().toArray();
+            const result = await teacherCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
 
@@ -136,8 +136,14 @@ async function run() {
         })
         // class related api 
 
+
+        app.get('/allCourse', async (req, res) => {
+            const query = { status: 'approved' }
+            const result = await classCollection.find(query).sort({ _id: -1 }).toArray();
+            res.send(result);
+        });
         app.get('/class', async (req, res) => {
-            const result = await classCollection.find().toArray();
+            const result = await classCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
         app.get('/class/:id', async (req, res) => {
@@ -146,7 +152,7 @@ async function run() {
             const result = await classCollection.findOne(query);
             res.send(result);
         });
-        app.get('/class/:email', async (req, res) => {
+        app.get('/class/add/:email', async (req, res) => {
             const email = req.params.email;
             const query = { teacherEmail: email }
             // console.log()
