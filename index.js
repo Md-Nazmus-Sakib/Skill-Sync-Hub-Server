@@ -1,8 +1,11 @@
 const express = require('express');
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
 require('dotenv').config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
+
 const port = process.env.PORT || 5000;
 
 // middle wear
@@ -34,8 +37,61 @@ async function run() {
         const teacherCollection = client.db("SkillSyncHub").collection("teachers");
         const classCollection = client.db("SkillSyncHub").collection("classes");
         const assignmentCollection = client.db("SkillSyncHub").collection("assignments");
+        const paymentCollection = client.db("SkillSyncHub").collection("payments");
+        const studentCollection = client.db("SkillSyncHub").collection("students");
+
+        const verifyJWT = (req, res, next) => {
+            const authorization = req.headers.authorization;
+            if (!authorization) {
+                return res.status(401).send({ error: true, message: 'unauthorized user' });
+            }
+            const token = authorization.split(' ')[1];
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ err: true, message: 'unauthorized user' });
+                }
+                req.decoded = decoded;
+                next();
+            })
+        }
+
+
+
+
+
+        // jwt related api
+        app.post('/jwt', async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+            res.send({ token });
+        })
+        //Create Payment Intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+            // console.log(price, amount)
+            // console.log(process.env.PAYMENT_SECRET_KEY)
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+        //payment related api
+        app.post('/payment', async (req, res) => {
+            const payment = req.body;
+            const result = await paymentCollection.insertOne(payment);
+            res.send(result)
+        })
+
+
+
+
         // users related api
-        app.get('/users', async (req, res) => {
+        app.get('/users', verifyJWT, async (req, res) => {
             const result = await userCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
@@ -95,7 +151,7 @@ async function run() {
             res.send(result);
         })
         //teacher api
-        app.get('/teacher', async (req, res) => {
+        app.get('/teacher', verifyJWT, async (req, res) => {
             const result = await teacherCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
@@ -213,6 +269,14 @@ async function run() {
             const result = await classCollection.deleteOne(query)
             res.send(result)
         })
+
+        //Student api
+        app.post('/student', async (req, res) => {
+            const student = req.body;
+            const result = await studentCollection.insertOne(student);
+            res.send(result);
+        });
+
         //Assignment Api
         app.post('/assignment', async (req, res) => {
             const assignment = req.body;
