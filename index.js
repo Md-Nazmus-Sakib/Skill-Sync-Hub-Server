@@ -33,6 +33,7 @@ async function run() {
         const userCollection = client.db("SkillSyncHub").collection("users");
         const teacherCollection = client.db("SkillSyncHub").collection("teachers");
         const classCollection = client.db("SkillSyncHub").collection("classes");
+        const assignmentCollection = client.db("SkillSyncHub").collection("assignments");
         // users related api
         app.get('/users', async (req, res) => {
             const result = await userCollection.find().toArray();
@@ -135,6 +136,16 @@ async function run() {
         })
         // class related api 
 
+        app.get('/class', async (req, res) => {
+            const result = await classCollection.find().toArray();
+            res.send(result);
+        });
+        app.get('/class/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await classCollection.findOne(query);
+            res.send(result);
+        });
         app.get('/class/:email', async (req, res) => {
             const email = req.params.email;
             const query = { teacherEmail: email }
@@ -167,12 +178,45 @@ async function run() {
 
         })
 
+        app.patch('/class/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    status: 'approved'
+                }
+            }
+            const result = await classCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+        app.patch('/class/reject/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    status: 'reject'
+                }
+            }
+            const result = await classCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+
         app.delete('/class/:id', async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await classCollection.deleteOne(query)
             res.send(result)
         })
+        //Assignment Api
+        app.post('/assignment', async (req, res) => {
+            const assignment = req.body;
+            const result = await assignmentCollection.insertOne(assignment);
+            res.send(result);
+        });
+
+
+
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
