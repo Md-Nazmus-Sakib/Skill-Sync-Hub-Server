@@ -39,6 +39,8 @@ async function run() {
         const assignmentCollection = client.db("SkillSyncHub").collection("assignments");
         const paymentCollection = client.db("SkillSyncHub").collection("payments");
         const studentCollection = client.db("SkillSyncHub").collection("students");
+        const feedbackCollection = client.db("SkillSyncHub").collection("feedbacks");
+        const submitAssignmentCollection = client.db("SkillSyncHub").collection("submitAssignments");
 
         const verifyJWT = (req, res, next) => {
             const authorization = req.headers.authorization;
@@ -95,7 +97,7 @@ async function run() {
             const result = await userCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
-        app.get('/users/:email', async (req, res) => {
+        app.get('/users/:email', verifyJWT, async (req, res) => {
 
             const email = req.params.email;
             // console.log(email)
@@ -104,7 +106,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get('/users/role/:email', async (req, res) => {
+        app.get('/users/role/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const projection = { role: 1 };
@@ -118,7 +120,7 @@ async function run() {
             }
 
         })
-        app.post('/users', async (req, res) => {
+        app.post('/users', verifyJWT, async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
             const existingUser = await userCollection.findOne(query);
@@ -128,7 +130,7 @@ async function run() {
             const result = await userCollection.insertOne(user);
             res.send(result);
         });
-        app.patch('/users/admin/:id', async (req, res) => {
+        app.patch('/users/admin/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -139,12 +141,23 @@ async function run() {
             const result = await userCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
-        app.patch('/users/role/:email', async (req, res) => {
+        app.patch('/users/role/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const updatedDoc = {
                 $set: {
                     role: 'Teacher'
+                }
+            }
+            const result = await userCollection.updateOne(filter, updatedDoc);
+            res.send(result);
+        })
+        app.patch('/users/student/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const filter = { email: email };
+            const updatedDoc = {
+                $set: {
+                    role: 'Student'
                 }
             }
             const result = await userCollection.updateOne(filter, updatedDoc);
@@ -156,7 +169,7 @@ async function run() {
             res.send(result);
         });
 
-        app.post('/teacher', async (req, res) => {
+        app.post('/teacher', verifyJWT, async (req, res) => {
             const teacher = req.body;
             const query = { teacherEmail: teacher.teacherEmail }
             const existingUser = await teacherCollection.findOne(query);
@@ -167,7 +180,7 @@ async function run() {
             res.send(result);
         });
 
-        app.patch('/teacher/:id', async (req, res) => {
+        app.patch('/teacher/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -179,7 +192,7 @@ async function run() {
             res.send(result);
         })
 
-        app.patch('/teacher/reject/:id', async (req, res) => {
+        app.patch('/teacher/reject/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -198,17 +211,17 @@ async function run() {
             const result = await classCollection.find(query).sort({ _id: -1 }).toArray();
             res.send(result);
         });
-        app.get('/class', async (req, res) => {
+        app.get('/class', verifyJWT, async (req, res) => {
             const result = await classCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
-        app.get('/class/:id', async (req, res) => {
+        app.get('/class/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const result = await classCollection.findOne(query);
             res.send(result);
         });
-        app.get('/class/add/:email', async (req, res) => {
+        app.get('/class/add/:email', verifyJWT, async (req, res) => {
             const email = req.params.email;
             const query = { teacherEmail: email }
             // console.log()
@@ -216,13 +229,13 @@ async function run() {
             res.send(result);
         });
 
-        app.post('/class', async (req, res) => {
+        app.post('/class', verifyJWT, async (req, res) => {
             const addClass = req.body;
             const result = await classCollection.insertOne(addClass);
             res.send(result);
         });
 
-        app.put('/class/:id', async (req, res) => {
+        app.put('/class/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const options = { upsert: true };
@@ -240,7 +253,7 @@ async function run() {
 
         })
 
-        app.patch('/class/:id', async (req, res) => {
+        app.patch('/class/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -251,7 +264,7 @@ async function run() {
             const result = await classCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
-        app.patch('/class/reject/:id', async (req, res) => {
+        app.patch('/class/reject/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
             const updatedDoc = {
@@ -263,7 +276,7 @@ async function run() {
             res.send(result);
         })
 
-        app.delete('/class/:id', async (req, res) => {
+        app.delete('/class/:id', verifyJWT, async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) }
             const result = await classCollection.deleteOne(query)
@@ -271,21 +284,85 @@ async function run() {
         })
 
         //Student api
-        app.post('/student', async (req, res) => {
+        app.get('/enrollClass/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const studentWithEmail = await studentCollection.find({ email: email }).toArray();
+            let allClass = []
+
+            for (const student of studentWithEmail) {
+                const { teacherEmail, title } = student;
+                const Classes = await classCollection.find({ teacherEmail, title }).toArray();
+
+                allClass = allClass.concat(Classes);
+
+            }
+            res.send(allClass);
+        });
+
+        app.post('/student', verifyJWT, async (req, res) => {
             const student = req.body;
             const result = await studentCollection.insertOne(student);
             res.send(result);
         });
 
+
+
         //Assignment Api
-        app.post('/assignment', async (req, res) => {
+        app.get('/assignment/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { courseId: id };
+            const result = await assignmentCollection.find(query).toArray();
+            res.send(result);
+        });
+        app.post('/assignment', verifyJWT, async (req, res) => {
             const assignment = req.body;
             const result = await assignmentCollection.insertOne(assignment);
             res.send(result);
         });
+        //submit Assignment api
+        app.post('/submitAssignment', verifyJWT, async (req, res) => {
+            const assignmentData = req.body;
+            const result = await submitAssignmentCollection.insertOne(assignmentData);
+            res.send(result);
+        });
+        //Feedback Api
+        app.get('/feedback', async (req, res) => {
+            const result = await feedbackCollection.find().toArray();
+            res.send(result);
+        });
 
+        app.post('/feedback', verifyJWT, async (req, res) => {
+            const feedback = req.body;
+            const result = await feedbackCollection.insertOne(feedback);
+            res.send(result);
+        });
 
+        // Estimate Count 
+        app.get('/total-count', async (req, res) => {
+            const totalUsers = await userCollection.estimatedDocumentCount();
+            const totalClass = await classCollection.estimatedDocumentCount();
+            const totalStudent = await studentCollection.estimatedDocumentCount();
 
+            res.send({
+                totalUsers,
+                totalClass,
+                totalStudent
+            })
+        })
+
+        //teacher Progress
+        app.get('/teacher-progress/:id', async (req, res) => {
+            const id = req.params.id;
+            const totalAssignment = await assignmentCollection.find({ courseId: id }).toArray();
+            const totalEnroll = await studentCollection.find({ courseId: id }).toArray();
+            const assignmentSubmit = await submitAssignmentCollection.find({ courseId: id }).toArray();
+
+            res.send({
+                totalAssignment: totalAssignment.length,
+                totalEnroll: totalEnroll.length,
+                assignmentSubmit: assignmentSubmit.length
+            })
+        })
 
 
         // Send a ping to confirm a successful connection
