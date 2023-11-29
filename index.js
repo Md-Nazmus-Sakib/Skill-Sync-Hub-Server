@@ -31,7 +31,7 @@ const client = new MongoClient(uri, {
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
-        await client.connect();
+        // await client.connect();
         //all Collection
         const userCollection = client.db("SkillSyncHub").collection("users");
         const teacherCollection = client.db("SkillSyncHub").collection("teachers");
@@ -106,7 +106,7 @@ async function run() {
             res.send(result);
         });
 
-        app.get('/users/role/:email', verifyJWT, async (req, res) => {
+        app.get('/users/role/:email', async (req, res) => {
             const email = req.params.email;
             const query = { email: email };
             const projection = { role: 1 };
@@ -120,7 +120,7 @@ async function run() {
             }
 
         })
-        app.post('/users', verifyJWT, async (req, res) => {
+        app.post('/users', async (req, res) => {
             const user = req.body;
             const query = { email: user.email }
             const existingUser = await userCollection.findOne(query);
@@ -141,7 +141,7 @@ async function run() {
             const result = await userCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
-        app.patch('/users/role/:email', verifyJWT, async (req, res) => {
+        app.patch('/users/role/:email', async (req, res) => {
             const email = req.params.email;
             const filter = { email: email };
             const updatedDoc = {
@@ -152,16 +152,23 @@ async function run() {
             const result = await userCollection.updateOne(filter, updatedDoc);
             res.send(result);
         })
+
         app.patch('/users/student/:email', verifyJWT, async (req, res) => {
-            const email = req.params.email;
-            const filter = { email: email };
-            const updatedDoc = {
-                $set: {
-                    role: 'Student'
-                }
+
+            try {
+                const userEmail = req.params.email;
+                const filter = { email: userEmail };
+                const updatedDoc = {
+                    $set: {
+                        role: 'Student'
+                    }
+                };
+                const result = await userCollection.updateOne(filter, updatedDoc);
+                res.send(result);
+            } catch (error) {
+                console.error("Error updating document:", error);
+
             }
-            const result = await userCollection.updateOne(filter, updatedDoc);
-            res.send(result);
         })
         //teacher api
         app.get('/teacher', verifyJWT, async (req, res) => {
@@ -205,13 +212,20 @@ async function run() {
         })
         // class related api 
 
-
         app.get('/allCourse', async (req, res) => {
-            const query = { status: 'approved' }
-            const result = await classCollection.find(query).sort({ _id: -1 }).toArray();
+
+            const classes = await classCollection.find({ status: 'approved' }).toArray();
+
+            const result = [];
+            for (const cls of classes) {
+                const enrollmentsCount = await studentCollection.countDocuments({ courseId: cls._id.toString() });
+                result.push({ ...cls, numberOfStudents: enrollmentsCount });
+            }
             res.send(result);
         });
-        app.get('/class', verifyJWT, async (req, res) => {
+
+
+        app.get('/class', async (req, res) => {
             const result = await classCollection.find().sort({ _id: -1 }).toArray();
             res.send(result);
         });
@@ -228,6 +242,25 @@ async function run() {
             const result = await classCollection.find(query).toArray();
             res.send(result);
         });
+
+
+        app.get('/popular-courses', async (req, res) => {
+            const classes = await classCollection.find({ status: 'approved' }).toArray();
+
+            const course = [];
+            for (const cls of classes) {
+                const enrollmentsCount = await studentCollection.countDocuments({ courseId: cls._id.toString() });
+                course.push({ ...cls, numberOfStudents: enrollmentsCount });
+            }
+
+            // Sort the course array based on numberOfStudents in descending order
+            course.sort((a, b) => b.numberOfStudents - a.numberOfStudents);
+
+            // Limit the course to the top 6 classes with the highest numberOfStudents
+            const result = course.slice(0, 6);
+
+            res.send(result);
+        })
 
         app.post('/class', verifyJWT, async (req, res) => {
             const addClass = req.body;
@@ -366,8 +399,8 @@ async function run() {
 
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
