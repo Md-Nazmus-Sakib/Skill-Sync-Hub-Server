@@ -114,7 +114,7 @@ async function run() {
 
             const user = await userCollection.findOne(query, projection);
             if (user && user.role) {
-                res.send({ role: user.role }); // Send only the role in the response
+                res.send({ role: user.role });
             } else {
                 res.send([]);
             }
@@ -213,8 +213,18 @@ async function run() {
         // class related api 
 
         app.get('/allCourse', async (req, res) => {
+            const searchQuery = req.query?.search;
+            let classes = [];
+            if (searchQuery) {
+                const searchRegex = new RegExp(searchQuery, 'i');
+                classes = await classCollection.find({
+                    status: 'approved', title: { $regex: searchRegex }
+                }).toArray();
 
-            const classes = await classCollection.find({ status: 'approved' }).toArray();
+            }
+            else {
+                classes = await classCollection.find({ status: 'approved' }).toArray();
+            }
 
             const result = [];
             for (const cls of classes) {
@@ -223,6 +233,8 @@ async function run() {
             }
             res.send(result);
         });
+
+
 
 
         app.get('/class', async (req, res) => {
@@ -252,11 +264,7 @@ async function run() {
                 const enrollmentsCount = await studentCollection.countDocuments({ courseId: cls._id.toString() });
                 course.push({ ...cls, numberOfStudents: enrollmentsCount });
             }
-
-            // Sort the course array based on numberOfStudents in descending order
             course.sort((a, b) => b.numberOfStudents - a.numberOfStudents);
-
-            // Limit the course to the top 6 classes with the highest numberOfStudents
             const result = course.slice(0, 6);
 
             res.send(result);
@@ -332,6 +340,18 @@ async function run() {
             res.send(allClass);
         });
 
+        app.get('/myOrder/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email }
+            const result = await studentCollection.find(query).toArray();
+            res.send(result);
+        });
+        app.get('/orderDetail/:id', verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await studentCollection.findOne(query);
+            res.send(result);
+        });
         app.post('/student', verifyJWT, async (req, res) => {
             const student = req.body;
             const result = await studentCollection.insertOne(student);
